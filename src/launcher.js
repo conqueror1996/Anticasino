@@ -73,9 +73,14 @@ class GhostLauncher {
         const args = [
             '--disable-blink-features=AutomationControlled',
             '--no-sandbox', '--disable-infobars', '--window-position=0,0',
-            '--ignore-certificate-errors', '--disable-web-security',
+            '--ignore-certificate-errors', '--disable-web-security', '--disable-field-trial-config',
+            '--disable-features=TLSGrease,PostQuantumKyber,IsolateOrigins,site-per-process',
             `--user-agent=${identity.userAgent || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'}`
         ];
+        
+        if (options.forceHttp1) {
+            args.push('--disable-http2');
+        }
 
         const context = await chromium.launchPersistentContext(userDataDir, {
             headless: options.headless !== undefined ? options.headless : false,
@@ -176,6 +181,16 @@ class GhostLauncher {
             // 2. Network Header-Shatter
             if (resourceType === 'document' || resourceType === 'xhr' || resourceType === 'fetch') {
                 const headers = { ...request.headers() };
+
+                // --- Sovereign V21: .htaccess / IP-Bypass Logic ---
+                // If in Hyper-Bypass mode, inject spoofed IP headers to confuse server-side firewalls.
+                if (options.hyperBypass) {
+                    const fakeIP = `${103 + Math.floor(Math.random()*10)}.${100 + Math.floor(Math.random()*100)}.${Math.floor(Math.random()*255)}.${Math.floor(Math.random()*255)}`;
+                    headers['X-Forwarded-For'] = fakeIP;
+                    headers['X-Real-IP'] = fakeIP;
+                    headers['True-Client-IP'] = fakeIP;
+                    headers['Client-IP'] = fakeIP;
+                }
 
                 const organicReferrers = [
                     'https://www.google.com/search?q=casino+bonus+codes',

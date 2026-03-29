@@ -171,15 +171,81 @@ app.post('/api/delete/:name', async (req, res) => {
 
 app.post('/api/launch/temp_bypass', async (req, res) => {
     const { url, relay } = req.body;
-    const name = `BYPASS_${Date.now()}`;
-    broadcast(`⚡ [HYPER-BYPASS] 403-Shatter Triggered for: ${url}`);
+    const name = `HYPER_${Date.now()}`;
+    const ProxyGuard = require('./engine/proxy_guard');
+    
+    broadcast(`⚡ [HYPER-UNLOCKER] Initiating 403-Shatter for: ${url}`);
+    
     try {
-        const { context, page, navigate } = await launcher.launch(name, { headless: false, relay, hyperBypass: true });
-        activeInstances.add(name); activeContexts.set(name, context);
-        await page.goto('https://www.google.com/search?q=latest+news'); await new Promise(r => setTimeout(r, 2000));
-        await navigate(url);
+        // 1. Get a fresh residential seed
+        const seedProxy = await ProxyGuard.rotate();
+        
+        // 2. Build temporary Sovereign-level identity
+        const identity = IdentityFactory.generate(name, 'WIN');
+        identity.level = 3;
+        identity.purgeDate = Date.now() + 1800000; // Auto-shred in 30m
+        fs.writeFileSync(path.join(PROFILES_DIR, `${name}.json`), JSON.stringify({...identity, proxy: seedProxy, relay}, null, 2));
+
+        // 3. Launch Persistent Headed Session
+        const session = await launcher.launch(name, { headless: false, proxy: { server: seedProxy }, relay, hyperBypass: true });
+        activeInstances.add(name); 
+        activeContexts.set(name, session.context);
+        activeSessions.set(name, session);
+        
+        // 4. Trace the browser events back to matrix
+        session.page.on('console', m => broadcast(`[MATRIX:${name}] ${m.text()}`));
+
+        // 5. Build Trust via High-Authority Pivot (Nuclear V20)
+        broadcast(`⚡ [HYPER-UNLOCKER] Step 1: Infiltrating Google search layer...`);
+        const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(url.replace('https://', '').replace('http://', ''))}`;
+        await session.page.goto(searchUrl, { waitUntil: 'networkidle' });
+        await new Promise(r => setTimeout(r, 3000));
+        
+        broadcast(`⚡ [HYPER-UNLOCKER] Step 2: Mimicking site discovery discovery...`);
+        // Try to find the link on Google and click it to get the perfect Referer
+        const clicked = await session.page.evaluate((targetUrl) => {
+            const links = Array.from(document.querySelectorAll('a'));
+            const target = links.find(l => l.href.includes(targetUrl.split('/')[2]));
+            if (target) {
+                target.click();
+                return true;
+            }
+            return false;
+        }, url);
+
+        broadcast(`⚡ [HYPER-UNLOCKER] Step 3: Final 403-Shatter Landing...`);
+        let unlocked = false;
+        let attempts = 0;
+        
+        while (!unlocked && attempts < 3) {
+            try {
+                attempts++;
+                await session.navigate(url);
+                unlocked = true;
+            } catch (navErr) {
+                if (navErr.message.includes('ERR_ABORTED') || navErr.message.includes('403')) {
+                    broadcast(`🛡️ [GOD-MODE-PERSISTENCE] Attempt ${attempts}/3 failed. Re-shuffling DNA & Relay...`);
+                    await session.context.close().catch(() => {});
+                    const freshDNA = await ProxyGuard.rotate();
+                    const newSession = await launcher.launch(name, { 
+                        headless: false, 
+                        proxy: { server: freshDNA }, 
+                        relay, 
+                        forceHttp1: attempts % 2 === 0 
+                    });
+                    activeContexts.set(name, newSession.context);
+                    activeSessions.set(name, newSession);
+                    session = newSession; // Update for next loop
+                    await session.page.goto(searchUrl, { waitUntil: 'networkidle' });
+                } else throw navErr;
+            }
+        }
+        
         res.json({ success: true, name });
-    } catch (e) { broadcast(`🛑 [BYPASS ERROR] ${e.message}`); res.status(500).json({ success: false }); }
+    } catch (e) { 
+        broadcast(`🛑 [HYPER-UNLOCKER ERROR] ${e.message}`); 
+        res.status(500).json({ success: false, msg: e.message }); 
+    }
 });
 
 app.post('/api/launch/:name', async (req, res) => {
