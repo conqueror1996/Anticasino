@@ -238,6 +238,38 @@ app.get('/api/integrity/:name', async (req, res) => {
     });
 });
 
+app.post('/api/rotate/:name', async (req, res) => {
+    const name = decodeURIComponent(req.params.name);
+    broadcast(`📡 [FAILOVER] Triggering Autonomous Proxy Rotation for: ${name}`);
+    
+    try {
+        const wasRunning = activeInstances.has(name);
+        const session = activeSessions.get(name);
+        
+        // 1. Hot-Swap the Proxy DNA
+        const newProxy = await launcher.rotateProxy(name);
+        
+        // 2. If running, perform a persistent restart
+        if (wasRunning) {
+            broadcast(`📡 [FAILOVER] Hot-Restarting session with fresh IP...`);
+            if (session && session.context) await session.context.close().catch(() => {});
+            
+            // Re-launch using the same ID (Playwright will reuse the persistence directory)
+            const p = JSON.parse(fs.readFileSync(path.join(PROFILES_DIR, `${name}.json`), 'utf8'));
+            const newSession = await launcher.launch(name, { headless: false, proxy: { server: newProxy }, relay: p.relay });
+            
+            activeContexts.set(name, newSession.context);
+            activeSessions.set(name, newSession);
+            newSession.page.on('console', m => broadcast(`[MATRIX:${name}] ${m.text()}`));
+        }
+        
+        res.json({ success: true, proxy: newProxy });
+    } catch (e) {
+        broadcast(`🛑 [FAILOVER ERROR] ${e.message}`);
+        res.status(500).json({ success: false, msg: e.message });
+    }
+});
+
 app.post('/api/terminate-all', async (req, res) => {
     broadcast(`🚨 [KILL-SWITCH] Terminating All Active Sessions...`);
     for (const [name, context] of activeContexts.entries()) {

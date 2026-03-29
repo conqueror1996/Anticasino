@@ -159,9 +159,17 @@ class GhostLauncher {
             if (abuseKeywords.some(k => url.includes(k) || (method === 'POST' && body.includes(k)))) {
                 const whitelist = ['google-analytics', 'facebook.com', 'google-tag-manager'];
                 if (!whitelist.some(w => url.includes(w))) {
-                    console.log(`🛡️ [SOVEREIGN-SHIELD] Inception: Detection Report BLOCKED for: ${path.basename(url)}`);
+                    console.log(`🛡️ [SOVEREIGN-SHIELD] Deception: Detection Report SPOOFED (200 OK) for: ${path.basename(url)}`);
                     this.shatteredCount.set(id, (this.shatteredCount.get(id) || 0) + 1); 
-                    return route.abort(); // KILL THE REPORT
+                    
+                    // --- Telemetry Deception (Sovereign V16) ---
+                    // Instead of a suspicious 'Abort', we gaslight the casino AI 
+                    // by returning a perfect 'Success' response.
+                    return route.fulfill({
+                        status: 200,
+                        contentType: 'application/json',
+                        body: JSON.stringify({ success: true, status: 'delivered', id: Math.random().toString(36).substring(7) })
+                    });
                 }
             }
 
@@ -227,6 +235,27 @@ class GhostLauncher {
         while(u === 0) u = Math.random(); 
         while(v === 0) v = Math.random();
         return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v) * 0.5 + 0.5;
+    }
+
+    async rotateProxy(id) {
+        const ProxyGuard = require('./engine/proxy_guard');
+        const identityPath = path.resolve(__dirname, `../profiles/${id}.json`);
+        if (!fs.existsSync(identityPath)) throw new Error("Identity not found.");
+        
+        const identity = JSON.parse(fs.readFileSync(identityPath, 'utf8'));
+        console.log(`📡 [SOVEREIGN-FLEET] Initiating Autonomous Failover for: ${id}`);
+        
+        // 1. Find a fresh audited proxy
+        const newProxy = await ProxyGuard.rotate(identity.proxy);
+        if (!newProxy) throw new Error("No healthy proxy candidates in pool.");
+        
+        // 2. Update Identity Vault
+        identity.proxy = newProxy;
+        fs.writeFileSync(identityPath, JSON.stringify(identity, null, 2));
+        
+        // 3. Hot-Swap: The next launch will use the new proxy
+        console.log(`✅ [SOVEREIGN-FLEET] Proxy Hot-Swapped to: ${newProxy}`);
+        return newProxy;
     }
 }
 

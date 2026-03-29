@@ -676,6 +676,7 @@
                         <div style="display: flex; gap: 0.4rem;">
                             <button class="btn btn-icon" onclick="openMirror('${p.name}')" title="Matrix Mirror" ${p.shadowing ? 'disabled' : ''}>👁️</button>
                             <button class="btn btn-icon" onclick="toggleShadow('${p.name}')" style="${p.shadowing ? 'color:var(--primary); border-color:var(--primary);' : ''}" title="Shadow-Farming">🌙</button>
+                            <button class="btn btn-icon" onclick="rotateProxy('${p.name}')" title="Rotate Proxy">📡</button>
                             <button class="btn btn-icon ${isWarming ? 'warming' : ''}" onclick="warmProfile('${p.name}')" title="Ghost Farmer">${isWarming ? '⏳' : '🔥'}</button>
                             <button class="btn btn-icon" onclick="probeIdentity('${p.name}')" title="Sovereign Probe">🛡️</button>
                             <button class="btn btn-icon" style="color: var(--danger);" onclick="shredProfile('${p.name}')" title="Shred Identity">🗑️</button>
@@ -721,6 +722,7 @@
         function closeModal() { isModalOpen = false; document.getElementById('createModal').style.display = 'none'; }
         
         async function toggleShadow(name) { await fetch(`/api/shadow-farm/${encodeURIComponent(name)}`, { method: 'POST' }); fetchProfiles(); }
+        async function rotateProxy(name) { await fetch(`/api/rotate/${encodeURIComponent(name)}`, { method: 'POST' }); fetchProfiles(); }
         async function submitProfile() {
             const name = document.getElementById('pName').value;
             const platform = document.getElementById('pPlatform').value;

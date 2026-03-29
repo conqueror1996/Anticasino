@@ -44,14 +44,29 @@ class ProxyGuard {
         }
     }
 
-    static _getAuthString(url) {
-        const clean = url.replace('http://', '').replace('https://', '');
-        return clean.includes('@') ? clean.split('@')[0] : null;
-    }
+    static async rotate(currentProxy = null, proxyFile = 'proxies.json') {
+        const fs = require('fs');
+        const path = require('path');
+        const file = path.join(__dirname, '../../', proxyFile);
+        
+        if (!fs.existsSync(file)) return null;
+        
+        let pool = JSON.parse(fs.readFileSync(file, 'utf8'));
+        if (!Array.isArray(pool) || pool.length === 0) return null;
 
-    static _getAddress(url) {
-        const clean = url.replace('http://', '').replace('https://', '');
-        return clean.includes('@') ? clean.split('@')[1] : clean;
+        // Shuffle & find a fresh proxy
+        const candidates = pool.filter(p => p !== currentProxy).sort(() => Math.random() - 0.5);
+        
+        for (const candidate of candidates) {
+            console.log(`📡 [PROXY-GUARD] Internal Rotation: Probing candidate ${candidate}...`);
+            const audit = await this.audit(candidate);
+            if (audit.success && audit.score > 80) {
+                console.log(`✅ [PROXY-GUARD] Hot-Swap Target Found: ${candidate}`);
+                return candidate;
+            }
+        }
+        
+        return null; // No healthy candidates in pool
     }
 }
 
