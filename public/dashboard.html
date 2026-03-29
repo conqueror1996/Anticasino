@@ -342,6 +342,17 @@
         </div>
 
         <div class="content-area-wrapper">
+            <div id="stats" style="display: flex; gap: 1rem; margin-bottom: 2rem;">
+                <div class="stat-card" style="flex:1; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--card-border); padding: 1.5rem; border-radius: 16px;"><h5>Fleet Active</h5><h2 id="activeCount">0</h2></div>
+                <div class="stat-card" style="flex:1; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--primary); padding: 1.5rem; border-radius: 16px;"><h5>Sovereign Ledger</h5><h2 id="totalLedger">₹0.00</h2></div>
+                <div class="stat-card" style="flex:1; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--accent); padding: 1.5rem; border-radius: 16px;"><h5>Armor Level</h5><h2 id="trustScore">GOD</h2></div>
+            </div>
+
+            <div style="display:flex; gap: 0.8rem; margin-bottom: 2.5rem;">
+                <button class="btn btn-primary" onclick="openModal()">+ INIT IDENTITY</button>
+                <button class="btn btn-primary" style="background: var(--accent); border-color: var(--accent);" onclick="openBatchModal()">🏭 BATCH FACTORY</button>
+                <button class="btn btn-primary" style="background: var(--danger); border-color: var(--danger);" onclick="terminateAll()">🚨 KILL-SWITCH</button>
+            </div>
             <div id="profilesView" class="grid-view">
                 <!-- Profile Cards -->
             </div>
@@ -428,7 +439,20 @@
     </div>
 
     <!-- Modals -->
-    <div id="createModal" class="modal">
+    <div id="batchModal" class="modal">
+        <div class="modal-content">
+            <h2 style="font-size: 1.6rem; font-weight: 800; margin-bottom: 1.5rem;">Forge Sovereign Fleet</h2>
+            <div class="input-group"><label>Base ID Alias</label><input type="text" id="batchBase" placeholder="e.g. SQUAD_ALPHA"></div>
+            <div style="display: flex; gap: 1rem;">
+                <div class="input-group" style="flex:1;"><label>Unit Count</label><input type="number" id="batchCount" value="10"></div>
+                <div class="input-group" style="flex:1;"><label>Device Class</label><select id="batchPlatform"><option value="WIN">Win 11</option><option value="MAC">MacOS</option><option value="IPHONE">iPhone</option></select></div>
+            </div>
+            <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+                <button class="btn btn-primary" style="flex:1;" onclick="submitBatch()">FORGE FLEET</button>
+                <button class="btn" onclick="closeBatchModal()">CANCEL</button>
+            </div>
+        </div>
+    </div>
         <div class="modal-content">
             <h2 style="font-size: 1.6rem; font-weight: 800; margin-bottom: 2rem;">Initialize Identity</h2>
             <div class="input-group"><label>Alias</label><input type="text" id="pName" placeholder="e.g. Ghost-Alpha"></div>
@@ -622,6 +646,11 @@
                 document.getElementById('networkStatus').innerHTML = "CLEAN";
                 document.getElementById('networkStatus').style.color = "var(--success)";
                 
+                document.getElementById('activeCount').innerText = profiles.filter(p => p.running).length;
+                const total = profiles.reduce((sum, p) => sum + (parseFloat(p.balance) || 0), 0);
+                const ledgerEl = document.getElementById('totalLedger');
+                if (ledgerEl) ledgerEl.innerText = `₹${total.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
+
                 const currentJson = JSON.stringify(profiles);
                 if (currentJson === lastProfilesJson) return;
                 lastProfilesJson = currentJson;
@@ -654,10 +683,13 @@
                             <div class="card-title">${p.name}</div>
                             ${timeRemaining}
                         </div>
-                        <div class="status-indicator" style="width: 12px; height: 12px; border-radius: 50%; background: ${p.running ? 'var(--success)' : '#222'}; box-shadow: ${p.running ? '0 0 10px var(--success)' : 'none'}"></div>
+                        <div style="text-align: right;">
+                            <div style="font-size: 0.6rem; color: var(--text-dim); text-transform: uppercase; font-weight: 800;">Vault Balance</div>
+                            <div style="font-size: 1.1rem; font-weight: 800; color: var(--primary);" onclick="updateBalance('${p.name}')">₹${parseFloat(p.balance).toFixed(2)}</div>
+                        </div>
                     </div>
                     
-                    <div style="margin: 1rem 0; font-family: 'JetBrains Mono'; font-size: 0.7rem; color: var(--text-dim);">
+                    <div style="margin: 1rem 0; font-family: 'JetBrains Mono'; font-size: 0.7rem; color: var(--text-dim); display: flex; justify-content: space-between;">
                         <div>GPU: <span style="color: var(--accent);">${p.renderer || 'N/A'}</span></div>
                         <div>MEM: <span style="color: var(--accent);">${p.deviceMemory || 8}GB</span></div>
                     </div>
@@ -720,6 +752,37 @@
         async function launchProfile(name) { await fetch(`/api/launch/${encodeURIComponent(name)}`, { method: 'POST' }); fetchProfiles(); }
         async function openModal() { isModalOpen = true; document.getElementById('createModal').style.display = 'flex'; }
         function closeModal() { isModalOpen = false; document.getElementById('createModal').style.display = 'none'; }
+        
+        async function openBatchModal() { isModalOpen = true; document.getElementById('batchModal').style.display = 'flex'; }
+        function closeBatchModal() { isModalOpen = false; document.getElementById('batchModal').style.display = 'none'; }
+
+        async function updateBalance(name) {
+            const amount = prompt("Vault Transaction - Enter Amount (e.g. 500 or -500):");
+            if (!amount || isNaN(amount)) return;
+            const val = parseFloat(amount);
+            const type = val >= 0 ? 'add' : 'subtract';
+            await fetch(`/api/balance/update/${encodeURIComponent(name)}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ amount: Math.abs(val), type })
+            });
+            fetchProfiles();
+        }
+
+        async function submitBatch() {
+            const baseName = document.getElementById('batchBase').value;
+            const count = parseInt(document.getElementById('batchCount').value);
+            const platform = document.getElementById('batchPlatform').value;
+            if (!baseName || isNaN(count)) return alert("Factory requires Base ID and Unit Count.");
+            
+            await fetch('/api/batch-create', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ baseName, count, platform })
+            });
+            closeBatchModal();
+            fetchProfiles();
+        }
         
         async function toggleShadow(name) { await fetch(`/api/shadow-farm/${encodeURIComponent(name)}`, { method: 'POST' }); fetchProfiles(); }
         async function rotateProxy(name) { await fetch(`/api/rotate/${encodeURIComponent(name)}`, { method: 'POST' }); fetchProfiles(); }
@@ -891,7 +954,29 @@
         }
         function closeIsp() { isModalOpen = false; document.getElementById('ispModal').style.display = 'none'; }
         async function harvestDNA() { document.getElementById('dnaStatus').innerText = "🧬 HARVESTING..."; const res = await fetch('/api/harvest-dna', { method: 'POST' }); const data = await res.json(); document.getElementById('dnaStatus').innerText = data.success ? `✅ GRAFTED: ${data.dna.renderer}` : "❌ FAILED"; }
-        async function oneTapUnlock() { const url = document.getElementById('bypassUrl').value; if (!url) return; await fetch('/api/launch/temp_bypass', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ url }) }); }
+        async function oneTapUnlock() {
+            let url = document.getElementById('bypassUrl').value;
+            if (!url) return alert("Target URL required for Hyper-Bypass.");
+            if (!url.startsWith('http')) url = 'https://' + url;
+            
+            const btn = document.getElementById('bypassBtn');
+            btn.innerText = "SHATTERING..."; btn.disabled = true;
+
+            try {
+                const res = await fetch('/api/launch/temp_bypass', { 
+                    method: 'POST', 
+                    headers: {'Content-Type': 'application/json'}, 
+                    body: JSON.stringify({ url }) 
+                });
+                const data = await res.json();
+                if (data.success) {
+                    showView('profiles');
+                    fetchProfiles();
+                    setTimeout(() => openMirror(data.name), 2000);
+                } else { alert("HYPER-BYPASS FAILED: " + data.msg); }
+            } catch (e) { alert("SYSTEM BREACH: " + e.message); }
+            finally { btn.innerText = "UNLOCK 🔓"; btn.disabled = false; }
+        }
         async function terminateAll() {
             if (!confirm("🚨 TERMINATE ALL ACTIVE SESSIONS? This will kill every Ghost identity instantly.")) return;
             await fetch('/api/terminate-all', { method: 'POST' });

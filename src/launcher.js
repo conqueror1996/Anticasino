@@ -75,6 +75,7 @@ class GhostLauncher {
             '--no-sandbox', '--disable-infobars', '--window-position=0,0',
             '--ignore-certificate-errors', '--disable-web-security', '--disable-field-trial-config',
             '--disable-features=TLSGrease,PostQuantumKyber,IsolateOrigins,site-per-process',
+            '--disable-gpu-process-for-dx12-info-collection', '--disable-font-subpixel-positioning', '--disable-threaded-scrolling',
             `--user-agent=${identity.userAgent || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'}`
         ];
         
@@ -203,13 +204,16 @@ class GhostLauncher {
                     headers['Referer'] = organicReferrers[Math.floor(Math.random() * organicReferrers.length)];
                 }
 
-                const targetHeaders = ['User-Agent', 'Accept-Language', 'Accept', 'Referer', 'Connection'];
+                // --- Sovereign V24: Header-Inertia Shuffling ---
+                const targetHeaders = ['User-Agent', 'Accept-Language', 'Accept', 'Referer', 'Connection', 'Upgrade-Insecure-Requests', 'Sec-Fetch-Dest', 'Sec-Fetch-Mode', 'Sec-Fetch-Site', 'Sec-Fetch-User'];
                 targetHeaders.forEach(h => {
-                    if (headers[h.toLowerCase()]) {
-                        const val = headers[h.toLowerCase()];
-                        delete headers[h.toLowerCase()];
-                        const shatteredKey = h.split('').map(c => Math.random() > 0.5 ? c.toUpperCase() : c.toLowerCase()).join('');
-                        headers[shatteredKey] = val;
+                    const low = h.toLowerCase();
+                    if (headers[low]) {
+                        const val = headers[low];
+                        delete headers[low];
+                        // Randomize Case for non-Standard-compliant WAF checks
+                        const key = Math.random() > 0.8 ? h.split('').map(c => Math.random() > 0.5 ? c.toUpperCase() : c.toLowerCase()).join('') : h;
+                        headers[key] = val;
                     }
                 });
 

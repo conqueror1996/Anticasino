@@ -138,9 +138,47 @@ app.get('/api/profiles', (req, res) => {
             shadowing: activeShadowFarming.has(name),
             purgeDate: d.purgeDate, 
             hasGraft: !!d.hasGraft, 
-            relay: d.relay 
+            relay: d.relay,
+            balance: d.balance || 0,
+            currency: d.currency || 'INR'
         };
     }));
+});
+
+app.post('/api/batch-create', async (req, res) => {
+    const { baseName, count, platform, relay } = req.body;
+    broadcast(`🏭 [FACTORY] Batch-creating ${count} Sovereign Identities: ${baseName}_*`);
+    
+    // Get proxies for rotation
+    const proxies = fs.existsSync(PROXIES_FILE) ? JSON.parse(fs.readFileSync(PROXIES_FILE, 'utf8')) : [];
+    
+    for (let i = 1; i <= count; i++) {
+        const name = `${baseName}_${i.toString().padStart(3, '0')}`;
+        const proxy = proxies.length > 0 ? proxies[i % proxies.length] : null;
+        const identity = IdentityFactory.generate(name, platform);
+        const pD = null; // Batch identities don't auto-shred by default
+        fs.writeFileSync(path.join(PROFILES_DIR, `${name}.json`), JSON.stringify({ ...identity, proxy, relay, purgeDate: pD, hasGraft: true }, null, 2));
+    }
+    
+    broadcast(`✅ [FACTORY] Fleet scale increased to +${count} identities.`);
+    res.json({ success: true });
+});
+
+app.post('/api/balance/update/:name', async (req, res) => {
+    const name = decodeURIComponent(req.params.name);
+    const { amount, type } = req.body; // type: 'add' or 'subtract'
+    const profilePath = path.join(PROFILES_DIR, `${name}.json`);
+    
+    if (fs.existsSync(profilePath)) {
+        const d = JSON.parse(fs.readFileSync(profilePath, 'utf8'));
+        const val = parseFloat(amount);
+        d.balance = (d.balance || 0) + (type === 'add' ? val : -val);
+        fs.writeFileSync(profilePath, JSON.stringify(d, null, 2));
+        broadcast(`💰 [LEDGER] Balance Updated for ${name}: ${d.balance} ${d.currency}`);
+        res.json({ success: true, balance: d.balance });
+    } else {
+        res.status(404).json({ success: false });
+    }
 });
 
 app.post('/api/create', (req, res) => {
@@ -170,7 +208,8 @@ app.post('/api/delete/:name', async (req, res) => {
 });
 
 app.post('/api/launch/temp_bypass', async (req, res) => {
-    const { url, relay } = req.body;
+    let { url, relay } = req.body;
+    if (!url.startsWith('http')) url = `https://${url}`;
     const name = `HYPER_${Date.now()}`;
     const ProxyGuard = require('./engine/proxy_guard');
     
@@ -195,24 +234,17 @@ app.post('/api/launch/temp_bypass', async (req, res) => {
         // 4. Trace the browser events back to matrix
         session.page.on('console', m => broadcast(`[MATRIX:${name}] ${m.text()}`));
 
-        // 5. Build Trust via High-Authority Pivot (Nuclear V20)
-        broadcast(`⚡ [HYPER-UNLOCKER] Step 1: Infiltrating Google search layer...`);
-        const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(url.replace('https://', '').replace('http://', ''))}`;
-        await session.page.goto(searchUrl, { waitUntil: 'networkidle' });
+        // 5. Build Trust via Sovereign Root-Pivot (V26)
+        const rootDomain = new URL(url).hostname.split('.').slice(-2).join('.');
+        broadcast(`⚡ [HYPER-UNLOCKER] Step 1: Establishing Root-Authority for: ${rootDomain}`);
+        await session.page.goto(`https://${rootDomain}/`, { waitUntil: 'networkidle', timeout: 60000 }).catch(() => {});
         await new Promise(r => setTimeout(r, 3000));
         
-        broadcast(`⚡ [HYPER-UNLOCKER] Step 2: Mimicking site discovery discovery...`);
-        // Try to find the link on Google and click it to get the perfect Referer
-        const clicked = await session.page.evaluate((targetUrl) => {
-            const links = Array.from(document.querySelectorAll('a'));
-            const target = links.find(l => l.href.includes(targetUrl.split('/')[2]));
-            if (target) {
-                target.click();
-                return true;
-            }
-            return false;
-        }, url);
-
+        broadcast(`⚡ [HYPER-UNLOCKER] Step 2: Infiltrating Google search layer...`);
+        const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(url.replace('https://', '').replace('http://', ''))}`;
+        await session.page.goto(searchUrl, { waitUntil: 'networkidle', timeout: 60000 }).catch(() => {});
+        await new Promise(r => setTimeout(r, 2000));
+        
         broadcast(`⚡ [HYPER-UNLOCKER] Step 3: Final 403-Shatter Landing...`);
         let unlocked = false;
         let attempts = 0;
@@ -220,10 +252,11 @@ app.post('/api/launch/temp_bypass', async (req, res) => {
         while (!unlocked && attempts < 3) {
             try {
                 attempts++;
-                await session.navigate(url);
+                broadcast(`⚡ [SHATTER] Attempt ${attempts}/3: Launching inertia-navigation...`);
+                await session.page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
                 unlocked = true;
             } catch (navErr) {
-                if (navErr.message.includes('ERR_ABORTED') || navErr.message.includes('403')) {
+                if (navErr.message.includes('ERR_ABORTED') || navErr.message.includes('403') || navErr.message.includes('Timeout')) {
                     broadcast(`🛡️ [GOD-MODE-PERSISTENCE] Attempt ${attempts}/3 failed. Re-shuffling DNA & Relay...`);
                     await session.context.close().catch(() => {});
                     const freshDNA = await ProxyGuard.rotate();
@@ -235,8 +268,8 @@ app.post('/api/launch/temp_bypass', async (req, res) => {
                     });
                     activeContexts.set(name, newSession.context);
                     activeSessions.set(name, newSession);
-                    session = newSession; // Update for next loop
-                    await session.page.goto(searchUrl, { waitUntil: 'networkidle' });
+                    session = newSession; 
+                    await session.page.goto(searchUrl, { waitUntil: 'networkidle' }).catch(() => {});
                 } else throw navErr;
             }
         }

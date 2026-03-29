@@ -57,7 +57,9 @@ class IdentityFactory {
             canvasNoise: 0.005 + (seededRandom(3) * 0.015),
             audioNoise: 0.0001 + (seededRandom(4) * 0.0008),
             hasGraft: true,
-            debris: true
+            debris: true,
+            balance: 0.00,
+            currency: 'INR'
         };
     }
 }
