@@ -665,15 +665,17 @@
                     <div class="badge-group">
                         ${p.hasGraft ? '<span class="badge" style="color:var(--accent); border-color:var(--accent);">DNA GRAFTED</span>' : ''}
                         ${isHeated ? '<span class="badge heated">HEATED</span>' : '<span class="badge">CLEAN</span>'}
+                        ${p.shadowing ? '<span class="badge" style="background:var(--primary); color:#fff; border:none;">🌙 SHADOW-HEATING</span>' : ''}
                         ${p.relay ? '<span class="badge">RELAY ACTIVE</span>' : ''}
                         <span class="badge" style="border-color: var(--primary); color: var(--primary);">V11 STEALTH</span>
                         <span id="score-${p.name}" class="badge" style="display:none;">-</span>
                     </div>
                     <div id="shattered-${p.name}" style="font-family: 'JetBrains Mono'; font-size: 0.6rem; color: var(--success); margin-top: 0.8rem; display: none;">🛡️ SHATTERED: 0</div>
                     <div class="action-row">
-                        <button class="btn btn-primary" style="flex:1;" onclick="launchProfile('${p.name}')">${isWarming ? 'WARMING...' : (p.running ? 'CLOSE' : 'IGNITE')}</button>
+                        <button class="btn btn-primary" style="flex:1;" onclick="launchProfile('${p.name}')" ${p.shadowing ? 'disabled' : ''}>${isWarming ? 'WARMING...' : (p.running ? 'CLOSE' : 'IGNITE')}</button>
                         <div style="display: flex; gap: 0.4rem;">
-                            <button class="btn btn-icon" onclick="openMirror('${p.name}')" title="Matrix Mirror">👁️</button>
+                            <button class="btn btn-icon" onclick="openMirror('${p.name}')" title="Matrix Mirror" ${p.shadowing ? 'disabled' : ''}>👁️</button>
+                            <button class="btn btn-icon" onclick="toggleShadow('${p.name}')" style="${p.shadowing ? 'color:var(--primary); border-color:var(--primary);' : ''}" title="Shadow-Farming">🌙</button>
                             <button class="btn btn-icon ${isWarming ? 'warming' : ''}" onclick="warmProfile('${p.name}')" title="Ghost Farmer">${isWarming ? '⏳' : '🔥'}</button>
                             <button class="btn btn-icon" onclick="probeIdentity('${p.name}')" title="Sovereign Probe">🛡️</button>
                             <button class="btn btn-icon" style="color: var(--danger);" onclick="shredProfile('${p.name}')" title="Shred Identity">🗑️</button>
@@ -718,6 +720,7 @@
         async function openModal() { isModalOpen = true; document.getElementById('createModal').style.display = 'flex'; }
         function closeModal() { isModalOpen = false; document.getElementById('createModal').style.display = 'none'; }
         
+        async function toggleShadow(name) { await fetch(`/api/shadow-farm/${encodeURIComponent(name)}`, { method: 'POST' }); fetchProfiles(); }
         async function submitProfile() {
             const name = document.getElementById('pName').value;
             const platform = document.getElementById('pPlatform').value;

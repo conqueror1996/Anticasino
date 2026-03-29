@@ -24,6 +24,7 @@ const activeContexts = new Map();
 const activeSessions = new Map(); // New: tracking full instance data (V11)
 const PROFILES_DIR = path.join(__dirname, '../profiles');
 const PROXY_FILE = path.join(__dirname, '../proxies.json');
+const activeShadowFarming = new Set();
 
 process.on('uncaughtException', (err) => {
     console.error(`💥 [CRITICAL] Uncaught Exception: ${err.message}`);
@@ -37,15 +38,11 @@ process.on('unhandledRejection', (reason, promise) => {
 
 const ROOT = path.resolve(__dirname, '..');
 const PUBLIC_DIR = path.join(ROOT, 'public');
-const PROFILES_DIR = path.join(ROOT, 'profiles');
-const PROXY_FILE = path.join(ROOT, 'proxies.json');
 const DNA_FILE = path.join(ROOT, 'host_dna.json');
 
 app.use(express.static(PUBLIC_DIR, { index: 'dashboard.html' }));
 app.use(express.json());
 
-const activeInstances = new Set();
-const activeContexts = new Map();
 const broadcast = (msg) => streamBus.emit('log', { time: new Date().toLocaleTimeString(), msg });
 
 // --- RECURSIVE HARDWARE HARVESTER (Sovereign Override) ---
@@ -133,7 +130,16 @@ app.get('/api/profiles', (req, res) => {
     if (!fs.existsSync(PROFILES_DIR)) fs.mkdirSync(PROFILES_DIR, { recursive: true });
     res.json(fs.readdirSync(PROFILES_DIR).filter(f => f.endsWith('.json') && !f.includes('_vault')).map(f => {
         const d = JSON.parse(fs.readFileSync(path.join(PROFILES_DIR, f), 'utf8'));
-        return { name: f.replace('.json', ''), platform: d.platform, running: activeInstances.has(f.replace('.json', '')), purgeDate: d.purgeDate, hasGraft: !!d.hasGraft, relay: d.relay };
+        const name = f.replace('.json', '');
+        return { 
+            name, 
+            platform: d.platform, 
+            running: activeInstances.has(name), 
+            shadowing: activeShadowFarming.has(name),
+            purgeDate: d.purgeDate, 
+            hasGraft: !!d.hasGraft, 
+            relay: d.relay 
+        };
     }));
 });
 
@@ -240,7 +246,59 @@ app.post('/api/terminate-all', async (req, res) => {
     activeInstances.clear();
     activeContexts.clear();
     activeSessions.clear();
+    activeShadowFarming.clear();
     res.json({ success: true });
+});
+
+app.post('/api/shadow-farm/:name', async (req, res) => {
+    const name = decodeURIComponent(req.params.name);
+    if (activeShadowFarming.has(name)) {
+        activeShadowFarming.delete(name);
+        broadcast(`🌙 [SHADOW-FARM] Disconnecting background worker for: ${name}`);
+        return res.json({ success: true, status: 'stopped' });
+    }
+    
+    if (activeInstances.has(name)) return res.status(400).json({ success: false, msg: "Identity is currently in active use." });
+    
+    activeShadowFarming.add(name);
+    broadcast(`🌙 [SHADOW-FARM] Awakening background worker for: ${name}`);
+    
+    const pPath = path.join(PROFILES_DIR, `${name}.json`);
+    const p = JSON.parse(fs.readFileSync(pPath, 'utf8'));
+
+    // Start Shadow Loop (Async)
+    (async () => {
+        while (activeShadowFarming.has(name)) {
+            let context;
+            try {
+                broadcast(`🌙 [SHADOW-FARM] ${name} is infiltrating high-trust domains...`);
+                const session = await launcher.launch(name, { 
+                    headless: true, 
+                    proxy: p.proxy ? { server: p.proxy } : undefined,
+                    relay: p.relay
+                });
+                context = session.context;
+                
+                // Perform a standard warming mission
+                await session.farmer.warmup(session.page);
+                
+                broadcast(`🌙 [SHADOW-FARM] ${name} mission success. Seeding cookies...`);
+                await context.close();
+            } catch (e) {
+                broadcast(`⚠️ [SHADOW-FARM] Mission aborted for ${name}: ${e.message}`);
+                if (context) await context.close().catch(() => {});
+            }
+            
+            // Randomized dormancy (10-30 minutes) to mimic biological sleep cycles
+            const dormancy = (10 + Math.random() * 20) * 60000;
+            if (activeShadowFarming.has(name)) {
+                broadcast(`🌙 [SHADOW-FARM] ${name} entering biological dormancy for ${Math.round(dormancy/60000)}m...`);
+                await new Promise(r => setTimeout(r, dormancy));
+            }
+        }
+    })();
+
+    res.json({ success: true, status: 'started' });
 });
 
 app.get('/api/stream', (req, res) => {
@@ -256,8 +314,15 @@ app.get('/api/stream', (req, res) => {
         try { res.write(`data: ${JSON.stringify(d)}\n\n`); } catch (e) { }
     };
 
+    // --- Sovereign Heartbeat (V14) ---
+    // Fixes 'context canceled' by sending a pulse every 15s to keep the tunnel alive.
+    const heartbeat = setInterval(() => {
+        try { res.write(': heartbeat\n\n'); } catch (e) { }
+    }, 15000);
+
     streamBus.on('log', onLog);
     req.on('close', () => {
+        clearInterval(heartbeat);
         streamBus.removeListener('log', onLog);
         res.end();
     });
