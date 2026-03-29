@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GHOST ARCHITECT | Sovereign Mission Control</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #8a2be2;
+            --primary-glow: rgba(138, 43, 226, 0.4);
+            --accent: #00f2fe;
+            --accent-glow: rgba(0, 242, 254, 0.3);
+            --bg: #050505;
+            --card-bg: rgba(20, 20, 25, 0.6);
+            --card-border: rgba(255, 255, 255, 0.08);
+            --text: #ffffff;
+            --text-dim: rgba(255, 255, 255, 0.5);
+            --danger: #ff3366;
+            --success: #00ffa3;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Space Grotesk', sans-serif; cursor: crosshair; }
+        
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            background-image: 
+                radial-gradient(circle at 0% 0%, rgba(138, 43, 226, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 100% 100%, rgba(0, 242, 254, 0.1) 0%, transparent 50%);
+            overflow: hidden;
+        }
+
+        /* --- Sovereign Sidebar --- */
+        .sidebar {
+            width: 280px;
+            background: rgba(10, 10, 12, 0.8);
+            border-right: 1px solid var(--card-border);
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            backdrop-filter: blur(40px);
+            z-index: 100;
+        }
+
+        .logo {
+            font-size: 1.2rem;
+            font-weight: 800;
+            letter-spacing: 2px;
+            background: linear-gradient(to right, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 3rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .nav-item {
+            padding: 1rem 1.2rem;
+            border-radius: 12px;
+            color: var(--text-dim);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            font-size: 0.9rem;
+            font-weight: 500;
+            border: 1px solid transparent;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .nav-item:hover, .nav-item.active {
+            background: rgba(255, 255, 255, 0.03);
+            color: var(--text);
+            border-color: var(--card-border);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            transform: translateX(5px);
+        }
+
+        .nav-item.active {
+            border-left: 4px solid var(--primary);
+        }
+
+        /* --- Main Content --- */
+        .main { flex: 1; display: flex; flex-direction: column; height: 100vh; position: relative; }
+        .top-bar {
+            height: 100px;
+            padding: 0 3rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--card-border);
+            background: rgba(5, 5, 5, 0.4);
+            backdrop-filter: blur(10px);
+            z-index: 50;
+        }
+
+        .status-cluster {
+            display: flex;
+            gap: 2rem;
+            align-items: center;
+        }
+
+        .status-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .status-label { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 2px; color: var(--text-dim); }
+        .status-value { font-size: 0.8rem; font-weight: 700; color: var(--accent); font-family: 'JetBrains Mono', monospace; }
+
+        .content-area-wrapper {
+            flex: 1;
+            padding: 3rem;
+            overflow-y: auto;
+        }
+
+        .grid-view {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+            gap: 1.5rem;
+            align-content: start;
+        }
+
+        /* --- Profile Cards --- */
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            padding: 2rem;
+            border-radius: 24px;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            backdrop-filter: blur(10px);
+        }
+
+        .card:hover {
+            transform: translateY(-8px);
+            border-color: var(--primary);
+            box-shadow: 0 20px 40px rgba(138, 43, 226, 0.15);
+        }
+
+        .card.active { border-color: var(--accent); box-shadow: 0 0 30px var(--accent-glow); }
+        .card.warming { border-color: var(--danger); box-shadow: 0 0 40px rgba(255, 69, 0, 0.4); animation: ghost-pulse 2s infinite cubic-bezier(0.4, 0, 0.2, 1); }
+        @keyframes ghost-pulse {
+            0% { border-color: rgba(255, 69, 0, 0.4); box-shadow: 0 0 20px rgba(255, 69, 0, 0.2); }
+            50% { border-color: rgba(255, 140, 0, 1); box-shadow: 0 0 50px rgba(255, 69, 0, 0.6); }
+            100% { border-color: rgba(255, 69, 0, 0.4); box-shadow: 0 0 20px rgba(255, 69, 0, 0.2); }
+        }
+
+        .farmer-progress {
+            height: 3px;
+            background: rgba(255, 69, 0, 0.2);
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 0%;
+            transition: width 0.5s;
+            box-shadow: 0 -5px 15px rgba(255, 69, 0, 0.5);
+            z-index: 10;
+        }
+
+        .card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem; }
+        .card-title { font-size: 1.2rem; font-weight: 700; letter-spacing: -0.5px; }
+        .card-subtitle { font-size: 0.7rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; }
+
+        .badge-group { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem; }
+        .badge {
+            font-size: 0.6rem;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--card-border);
+            text-transform: uppercase;
+        }
+
+        .badge.active { background: var(--success); color: #000; border: none; }
+        .badge.heated { background: #ff7e5f; color: #fff; border: none; }
+
+        .action-row {
+            display: flex;
+            gap: 0.6rem;
+            margin-top: 2rem;
+        }
+
+        .btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--card-border);
+            color: var(--text);
+            padding: 0.7rem 1.2rem;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
+        }
+
+        .btn:hover { background: rgba(255, 255, 255, 0.1); border-color: var(--text-dim); }
+        .btn-primary { background: var(--primary); border: none; font-weight: 700; box-shadow: 0 5px 15px var(--primary-glow); }
+        .btn-primary:hover { transform: scale(1.02); box-shadow: 0 8px 25px var(--primary-glow); }
+
+        .btn-icon { width: 40px; height: 40px; padding: 0; justify-content: center; }
+
+        /* --- Terminal Matrix --- */
+        .terminal {
+            height: 180px;
+            background: rgba(0, 0, 0, 0.7);
+            border-top: 1px solid var(--card-border);
+            padding: 1.5rem;
+            overflow-y: auto;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            color: var(--text-dim);
+        }
+
+        .term-line { margin-bottom: 0.5rem; display: flex; gap: 1rem; animation: fadeIn 0.3s; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        .term-prefix { color: var(--primary); font-weight: 700; }
+
+        /* --- Modals --- */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            backdrop-filter: blur(20px);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: #0c0c0e;
+            border: 1px solid var(--card-border);
+            padding: 3rem;
+            border-radius: 32px;
+            width: 100%;
+            max-width: 500px;
+            position: relative;
+        }
+
+        .input-group { margin-bottom: 1.5rem; }
+        .input-group label { display: block; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; color: var(--text-dim); margin-bottom: 0.8rem; letter-spacing: 1px; }
+        .input-group input, .input-group select, .input-group textarea {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--card-border);
+            padding: 1rem;
+            border-radius: 12px;
+            color: #fff;
+            outline: none;
+            font-size: 1rem;
+        }
+
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-thumb { background: var(--card-border); border-radius: 3px; }
+
+        /* --- Mobile Overwrite (V13 Responsive Armor) --- */
+        @media (max-width: 800px) {
+            body { flex-direction: column; overflow-y: auto; overflow-x: hidden; }
+            
+            .sidebar { 
+                position: fixed; 
+                bottom: 0; 
+                left: 0; 
+                width: 100%; 
+                height: 70px; 
+                border-right: none; 
+                border-top: 1px solid var(--card-border); 
+                padding: 0 1rem; 
+                flex-direction: row; 
+                justify-content: space-around; 
+                align-items: center; 
+                background: rgba(10, 10, 12, 0.95);
+                backdrop-filter: blur(20px);
+                z-index: 1000;
+            }
+            
+            .logo { display: none; }
+            .nav-item { padding: 0.5rem; flex-direction: column; gap: 4px; font-size: 0.6rem; border: none !important; }
+            .nav-item span { font-size: 1.2rem; }
+            
+            .main { padding-bottom: 70px; }
+            .top-bar { padding: 1.5rem 1rem; height: auto; flex-direction: column; align-items: stretch; gap: 1rem; }
+            .status-cluster { overflow-x: auto; padding-bottom: 0.5rem; justify-content: flex-start; gap: 1rem; }
+            .status-item { flex-shrink: 0; }
+            
+            .content-area-wrapper { padding: 1.5rem 1rem; }
+            .grid-view { grid-template-columns: 1fr; gap: 1rem; }
+            .card { padding: 1.2rem; border-radius: 16px; }
+            
+            .modal-content { padding: 1.5rem; width: 95% !important; border-radius: 20px; }
+            .terminal { height: 120px; font-size: 0.65rem; }
+            
+            /* Hide non-essential sidebar items to fit bottom-nav */
+            .sidebar div:nth-child(n+5) { display: none; } 
+            .sidebar .nav-item:nth-child(n+5) { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="logo">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z"/><path d="M12 16V12"/><path d="M12 8H12.01"/></svg>
+            ARCHITECT
+        </div>
+        <div class="nav-item active" onclick="showView('profiles')"><span>🛡️</span> Identity Vault</div>
+        <div class="nav-item" onclick="showView('proxies')"><span>📡</span> Sovereign Pool</div>
+        <div class="nav-item" onclick="showView('bypass')"><span>⚡</span> Hyper-Unlocker</div>
+        <div class="nav-item" onclick="showView('settings')"><span>🧬</span> Matrix Protocols</div>
+        <div class="nav-item" onclick="showView('guide')"><span>📖</span> Operations Guide</div>
+        
+        <div style="margin-top: auto; padding: 1.5rem; border: 1px dashed var(--primary); border-radius: 16px; background: rgba(138, 43, 226, 0.03);">
+            <div style="font-size: 0.6rem; color: var(--primary); font-weight: 800; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 8px;">Uptime Status</div>
+            <div style="font-size: 0.8rem; font-weight: 700; margin-bottom: 1.5rem;">GHOST NODE: <span style="color: var(--success);">ACTIVE</span></div>
+            <button class="btn" style="width: 100%; border-color: var(--danger); color: var(--danger); font-size: 0.7rem;" onclick="terminateAll()">TERMINATE ALL</button>
+        </div>
+    </div>
+
+    <div class="main">
+        <div class="top-bar">
+            <div>
+                <h1 style="font-size: 1.8rem; font-weight: 800; letter-spacing: -1.5px;">Mission Control</h1>
+                <p id="viewSubtitle" style="color: var(--text-dim); font-size: 0.8rem;">Monitoring active Ghost identities.</p>
+            </div>
+            <div class="status-cluster">
+                <div class="status-item"><div class="status-label">Shredder</div><div class="status-value">ABSOLUTE ZERO</div></div>
+                <div class="status-item"><div class="status-label">JA3 Mimic</div><div class="status-value">CHROME 122</div></div>
+                <div class="status-item"><div class="status-label">Network</div><div class="status-value" id="networkStatus" style="color: var(--success);">CLEAN</div></div>
+                <button class="btn btn-primary" onclick="openModal()">+ INIT IDENTITY</button>
+            </div>
+        </div>
+
+        <div class="content-area-wrapper">
+            <div id="profilesView" class="grid-view">
+                <!-- Profile Cards -->
+            </div>
+
+            <div id="proxiesView" style="display: none; max-width: 800px;">
+                <h2 style="margin-bottom: 2rem;">Sovereign IP Pool</h2>
+                <div class="input-group">
+                    <label>Residential Entry Points (host:port:user:pass)</label>
+                    <textarea id="proxyList" style="height: 300px;"></textarea>
+                </div>
+                <button class="btn btn-primary" onclick="saveProxies()">SYNC POOL</button>
+            </div>
+
+            <div id="bypassView" style="display: none; text-align: center; padding-top: 100px;">
+                <h2 style="font-size: 2.5rem; margin-bottom: 1.5rem;">Target Hyper-Unlocker</h2>
+                <p style="color: var(--text-dim); margin-bottom: 3rem;">Shatter firewalls with Google-Tunnel pivot mode.</p>
+                <div style="display: flex; gap: 1rem; max-width: 600px; margin: 0 auto;">
+                    <input type="text" id="bypassUrl" placeholder="https://top-secret-casino.com" class="btn" style="flex: 1; text-align: left; padding: 1.5rem;">
+                    <button class="btn btn-primary" onclick="oneTapUnlock()">UNLOCK 🔓</button>
+                </div>
+            </div>
+
+            <div id="settingsView" style="display: none;">
+                <h2 style="margin-bottom: 2rem;">Matrix Protocols</h2>
+                <div class="card" style="max-width: 600px; text-align: center;">
+                    <div style="font-size: 3rem; margin-bottom: 1.5rem;">🧬</div>
+                    <h3>Physical DNA Harvester</h3>
+                    <p style="color: var(--text-dim); margin: 1.5rem 0;">Graft your MacBook's real WebGL / Canvas / Audio hardware IDs.</p>
+                    <button class="btn btn-primary" onclick="harvestDNA()" style="margin: 0 auto;">HARVEST DNA 🧬</button>
+                    <div id="dnaStatus" style="margin-top: 1.5rem; font-family: 'JetBrains Mono'; font-size: 0.8rem; color: var(--accent);"></div>
+                </div>
+            </div>
+
+            <div id="guideView" style="display: none; max-width: 900px; margin: 0 auto;">
+                <h1 style="font-size: 2.2rem; font-weight: 800; letter-spacing: -2px; margin-bottom: 3rem; background: linear-gradient(90deg, #fff, var(--primary)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;">SOVEREIGN OPERATIONS GUIDE</h1>
+                
+                <div style="display: grid; gap: 2rem;">
+                    <div class="card" style="border-left: 4px solid var(--primary); padding: 2.5rem;">
+                        <div style="font-size: 0.6rem; color: var(--primary); font-weight: 800; letter-spacing: 2px; margin-bottom: 1rem;">PROTOCOL 01</div>
+                        <h3 style="margin-bottom: 1rem;">IDENTITY WARMING (🔥)</h3>
+                        <p style="color: var(--text-dim); line-height: 1.6; font-size: 0.9rem;">
+                            Establish a trust-score before visiting high-stakes targets. Converting a "Cold" identity into "Trusted" 
+                            material is mandatory. Hit the <b>Ghost Farmer (🔥)</b> button to seed 5-10 minutes of organic 
+                            history from high-authority repositories (Google, Reddit, Wikipedia).
+                        </p>
+                    </div>
+
+                    <div class="card" style="border-left: 4px solid var(--accent); padding: 2.5rem;">
+                        <div style="font-size: 0.6rem; color: var(--accent); font-weight: 800; letter-spacing: 2px; margin-bottom: 1rem;">PROTOCOL 02</div>
+                        <h3 style="margin-bottom: 1rem;">SOVEREIGN DNA GRAFTING (🧬)</h3>
+                        <p style="color: var(--text-dim); line-height: 1.6; font-size: 0.9rem;">
+                            Eliminate browser-inconsistency detection with <b>Physical DNS Grafting</b>. Standard spoofing is 
+                            detectable by Akamai; harvesting real hardware IDs (WebGL, Canvas, Audio) from your actual 
+                            MacBook or PC creates an environment indistinguishable from a consumer device.
+                        </p>
+                    </div>
+
+                    <div class="card" style="border-left: 4px solid var(--success); padding: 2.5rem;">
+                        <div style="font-size: 0.6rem; color: var(--success); font-weight: 800; letter-spacing: 2px; margin-bottom: 1rem;">PROTOCOL 03</div>
+                        <h3 style="margin-bottom: 1rem;">DOUBLE-HOP RELAY (📡)</h3>
+                        <p style="color: var(--text-dim); line-height: 1.6; font-size: 0.9rem;">
+                            Always pivot through a high-bandwidth <b>Residential Proxy</b>. The <b>Ghost Matrix</b> 
+                            tunnels your traffic through a local JA3-shaping hub, but the final exit IP must belong 
+                            to a clean residential range to avoid Datacenter blacklists.
+                        </p>
+                    </div>
+
+                    <div class="card" style="border-left: 4px solid var(--danger); padding: 2.5rem;">
+                        <div style="font-size: 0.6rem; color: var(--danger); font-weight: 800; letter-spacing: 2px; margin-bottom: 1rem;">PROTOCOL 04</div>
+                        <h3 style="margin-bottom: 1rem;">BIOLOGICAL BEHAVIOR (🦾)</h3>
+                        <p style="color: var(--text-dim); line-height: 1.6; font-size: 0.9rem;">
+                            Bypass AI behavioral analysis with <b>Gaussian inertia</b> and <b>Bezier paths</b>. 
+                            The <b>Humanizer 2.0</b> engine implements cognitive realization delays and muscle-mapped 
+                            inertia. Never use native automation; always route actions through the <b>Matrix Mirror (👁️)</b>.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="terminal" id="terminal">
+            <div class="term-line"><span class="term-prefix">[SYSTEM]</span> ⚡ Mastering Sovereign Matrix... Awaiting DNA.</div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div id="createModal" class="modal">
+        <div class="modal-content">
+            <h2 style="font-size: 1.6rem; font-weight: 800; margin-bottom: 2rem;">Initialize Identity</h2>
+            <div class="input-group"><label>Alias</label><input type="text" id="pName" placeholder="e.g. Ghost-Alpha"></div>
+            <div style="display: flex; gap: 1rem;">
+                <div class="input-group" style="flex:1;"><label>Hardware DNA</label><select id="pPlatform">
+                    <option value="WIN">Win 11 / i9</option>
+                    <option value="MAC">MacOS / M2</option>
+                    <option value="IPHONE">iPhone 15 Pro</option>
+                    <option value="ANDROID">Samsung S23</option>
+                </select></div>
+                <div class="input-group" style="flex:1;"><label>Hardening</label><select id="pLevel"><option value="1">Standard</option><option value="2">Sovereign</option><option value="3" selected>🎭 CASINO</option></select></div>
+            </div>
+            <div class="input-group"><label>Global Relay (Sovereign Double-Hop)</label><input type="text" id="pRelay" placeholder="34.120.55.12"></div>
+            <div class="input-group">
+                <label>Self-Destruction (Chronos Purge)</label>
+                <select id="pPurge">
+                    <option value="0">Never (Persistence Mode)</option>
+                    <option value="2">2 Hours (Tactical Blitz)</option>
+                    <option value="12">12 Hours (Standard Mission)</option>
+                    <option value="24">24 Hours (Full Shift)</option>
+                </select>
+            </div>
+            <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+                <button class="btn btn-primary" style="flex:1;" onclick="submitProfile()">IGNITE</button>
+                <button class="btn" onclick="closeModal()">CANCEL</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mirror Modal -->
+    <div id="mirrorModal" class="modal">
+        <div class="modal-content" style="max-width: 1200px; width: 95%; padding: 0; overflow: hidden; background: #000; border: 1px solid var(--primary);">
+            <div style="display:flex; justify-content:space-between; align-items:center; padding: 1.5rem 2rem; border-bottom: 1px solid var(--card-border); background: rgba(138, 43, 226, 0.05);">
+                <div>
+                    <h2 id="mirrorTitle" style="font-size: 1.2rem; font-weight: 800; letter-spacing: 1px; color: var(--primary);">EYE OF THE GHOST</h2>
+                    <div id="mirrorSubtitle" style="font-size: 0.6rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 2px;">SOVEREIGN FLEET OVERWATCH</div>
+                </div>
+                <div style="display: flex; gap: 1rem; align-items: center;">
+                    <div id="mirrorGridControls" style="display: flex; gap: 0.5rem;"></div>
+                    <button class="btn" style="border-color: var(--danger); color: var(--danger);" onclick="closeMirror()">TERMINATE STREAM</button>
+                    <button class="btn btn-primary" onclick="closeMirror()">DETACH</button>
+                </div>
+            </div>
+            
+            <div style="display: flex; height: 600px;">
+                <!-- Left: Visual Feed Grid -->
+                <div id="mirrorGrid" style="flex: 1; position: relative; background: #050505; display: grid; grid-template-columns: 1fr; align-items: center; justify-content: center; overflow: hidden; transition: all 0.5s;">
+                    <div style="position: absolute; top:0; left:0; width: 100%; height: 100%; box-shadow: inset 0 0 100px #000; pointer-events: none; z-index: 5;"></div>
+                    <div class="scanlines" style="position: absolute; top:0; left:0; width: 100%; height: 100%; background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06)); background-size: 100% 4px, 3px 100%; pointer-events: none; z-index: 6;"></div>
+                    <img id="mirrorFeed" style="max-width: 100%; max-height: 100%; object-fit: contain; filter: brightness(1.1) contrast(1.1); margin: auto;">
+                </div>
+
+                <!-- Right: Telemetry & Log -->
+                <div id="mirrorRightPanel" style="width: 350px; background: #0c0c0e; border-left: 1px solid var(--card-border); display: flex; flex-direction: column;">
+                    <div style="padding: 1.5rem; border-bottom: 1px solid var(--card-border);">
+                        <div style="font-size: 0.6rem; color: var(--primary); font-weight: 800; margin-bottom: 1rem; letter-spacing: 1px;">SOVEREIGN TELEMETRY</div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; font-family: 'JetBrains Mono'; font-size: 0.7rem;">
+                            <div><span style="color: var(--text-dim);">IP:</span> <span id="telemetryIP" style="color:var(--success)">LOCAL</span></div>
+                            <div><span style="color: var(--text-dim);">LAT:</span> <span id="telemetryLat" style="color:var(--accent)">42ms</span></div>
+                            <div><span style="color: var(--text-dim);">DNS:</span> <span style="color:var(--primary)">SECURE</span></div>
+                            <div><span style="color: var(--text-dim);">SHRED:</span> <span style="color:var(--success)">100%</span></div>
+                        </div>
+
+                        <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px dotted var(--card-border);">
+                            <div style="font-size: 0.6rem; color: var(--accent); font-weight: 800; margin-bottom: 0.8rem; letter-spacing: 1px;">BIOLOGICAL ENTROPY</div>
+                            <div style="display: flex; flex-direction: column; gap: 0.5rem; font-family: 'JetBrains Mono'; font-size: 0.65rem;">
+                                <div style="display: flex; justify-content: space-between;">
+                                    <span style="color: var(--text-dim);">ANXIETY:</span>
+                                    <span id="telemetryAnxiety" style="color: var(--success);">0% (STABLE)</span>
+                                </div>
+                                <div style="background: rgba(255,255,255,0.05); height: 4px; border-radius: 2px; overflow: hidden;">
+                                    <div id="anxietyBar" style="width: 0%; height: 100%; background: var(--success); transition: all 0.5s;"></div>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; margin-top: 0.3rem;">
+                                    <span style="color: var(--text-dim);">COGNITIVE:</span>
+                                    <span id="telemetryCognitive" style="color: #fff;">IDLE</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="flex: 1; display: flex; flex-direction: column;">
+                        <div style="padding: 1rem 1.5rem; font-size: 0.6rem; color: var(--accent); font-weight: 800; letter-spacing: 1px; border-bottom: 1px solid var(--card-border);">INTERCEPTION LOG (SHATTERED)</div>
+                        <div id="interceptionLog" style="flex: 1; overflow-y: auto; padding: 1rem; font-family: 'JetBrains Mono'; font-size: 0.65rem; color: var(--text-dim);">
+                            <div style="color: var(--success); margin-bottom: 0.5rem;">[SYSTEM] Matrix stream established.</div>
+                            <div style="margin-bottom: 0.5rem;">Waiting for probes...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div id="confirmModal" class="modal">
+        <div class="modal-content" style="max-width: 400px; text-align: center; border: 1px solid var(--danger); box-shadow: 0 0 50px rgba(255, 51, 102, 0.1);">
+            <div style="font-size: 3rem; margin-bottom: 1.5rem;">🌀</div>
+            <h2 id="confirmTitle" style="font-size: 1.4rem; font-weight: 800; margin-bottom: 1rem;">STERILIZE IDENTITY?</h2>
+            <p style="color: var(--text-dim); margin-bottom: 2.5rem; font-size: 0.9rem; line-height: 1.6;">This action will permanently shred all cookies, cache, and DNS configurations for this asset.</p>
+            <div style="display: flex; gap: 1rem;">
+                <button class="btn btn-primary" style="flex:1; background: var(--danger); box-shadow: 0 5px 15px rgba(255, 51, 102, 0.3);" id="confirmActionBtn" onclick="executeShred()">SHRED</button>
+                <button class="btn" style="flex:1;" onclick="closeConfirm()">CANCEL</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sovereign Status Modal -->
+    <div id="ispModal" class="modal">
+        <div class="modal-content" style="max-width: 440px; text-align: center; border: 1px solid var(--accent); box-shadow: 0 0 50px rgba(0, 242, 254, 0.1);">
+            <div style="font-size: 3rem; margin-bottom: 1.5rem;">🛡️</div>
+            <h2 style="font-size: 1.2rem; font-weight: 800; margin-bottom: 1rem; color: var(--accent); letter-spacing: 1px;">SOVEREIGN STATUS PROBE</h2>
+            
+            <div id="ispStats" style="text-align: left; background: rgba(0,0,0,0.3); padding: 1.5rem; border-radius: 16px; font-family: 'JetBrains Mono'; font-size: 0.75rem; margin-bottom: 2rem; display: flex; flex-direction: column; gap: 0.8rem;">
+                <div style="border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 0.5rem; color: var(--accent); font-weight: 800; font-size: 0.6rem;">NETWORK LAYER</div>
+                <div><span style="color: var(--text-dim);">ISP:</span> <span id="ispVal" style="color:#fff">PROBING...</span></div>
+                <div><span style="color: var(--text-dim);">REP:</span> <span id="ispType" style="color:#fff">-</span></div>
+                
+                <div style="margin-top: 0.5rem; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 0.5rem; color: var(--primary); font-weight: 800; font-size: 0.6rem;">HARDWARE LAYER</div>
+                <div><span style="color: var(--text-dim);">GPU:</span> <span id="gpuVal" style="color:#fff">-</span></div>
+                <div><span style="color: var(--text-dim);">NOISE:</span> <span id="noiseVal" style="color:#fff">-</span></div>
+                <div><span style="color: var(--text-dim);">DNA SYNC:</span> <span id="dnaSyncVal" style="color:#fff">-</span></div>
+            </div>
+            
+            <button class="btn btn-primary" style="width:100%;" onclick="closeIsp()">DISMISS</button>
+        </div>
+    </div>
+
+    <script>
+        let profiles = []; let proxies = []; let warmingProfiles = new Set(); let heatedProfiles = new Set();
+        let isModalOpen = false;
+        
+        const stream = new EventSource('/api/stream');
+        stream.onmessage = (e) => {
+            const data = JSON.parse(e.data);
+            
+            // 1. Terminal Log (Standard)
+            const line = document.createElement('div'); line.className = 'term-line';
+            line.innerHTML = `<span class="term-prefix">[${data.time}]</span> ${data.msg}`;
+            const term = document.getElementById('terminal');
+            if (term) {
+                term.appendChild(line); 
+                term.scrollTop = term.scrollHeight;
+            }
+
+            // 2. Matrix Mirror Interception Routing
+            if (data.msg.includes('[MATRIX:') && data.msg.includes('[SHATTER]')) {
+                const log = document.getElementById('interceptionLog');
+                if (log) {
+                    const item = document.createElement('div');
+                    item.style.marginBottom = '0.4rem';
+                    item.style.color = '#fff';
+                    item.innerHTML = `<span style="color:var(--primary)">⚡</span> ${data.msg.split('] ')[2] || 'Probe Neutralized'}`;
+                    log.prepend(item);
+                }
+            }
+
+            // 3. Biological Telemetry Routing
+            if (data.msg.includes('[COGNITIVE]')) {
+                const state = data.msg.split('[COGNITIVE] ')[1];
+                const el = document.getElementById('telemetryCognitive');
+                if (el) { el.innerText = state; el.style.color = state.includes('HIGH') ? 'var(--danger)' : 'var(--accent)'; }
+            }
+            if (data.msg.includes('[ANXIETY]')) {
+                const level = parseFloat(data.msg.split('Level: ')[1]);
+                const pct = Math.min(100, (level / 1.5) * 100);
+                const el = document.getElementById('telemetryAnxiety');
+                const bar = document.getElementById('anxietyBar');
+                if (el) { el.innerText = `${pct.toFixed(0)}% (${level > 0.8 ? 'STRESSED' : 'STABLE'})`; el.style.color = level > 0.8 ? 'var(--danger)' : 'var(--success)'; }
+                if (bar) { bar.style.width = `${pct}%`; bar.style.background = level > 0.8 ? 'var(--danger)' : 'var(--success)'; }
+            }
+        };
+
+        function showView(v) {
+            ['profiles', 'proxies', 'bypass', 'settings', 'guide'].forEach(view => {
+                const el = document.getElementById(view + 'View');
+                if (el) el.style.display = (view === v) ? (view === 'profiles' ? 'grid' : 'block') : 'none';
+            });
+            document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
+            event.currentTarget.classList.add('active');
+            
+            if (v === 'profiles') fetchProfiles();
+            if (v === 'proxies') fetchProxies();
+        }
+
+        let lastProfilesJson = "";
+        async function fetchProfiles() {
+            if (isModalOpen) return;
+            try {
+                const res = await fetch('/api/profiles');
+                if (!res.ok) throw new Error("Offline");
+                profiles = await res.json();
+                document.getElementById('networkStatus').innerHTML = "CLEAN";
+                document.getElementById('networkStatus').style.color = "var(--success)";
+                
+                const currentJson = JSON.stringify(profiles);
+                if (currentJson === lastProfilesJson) return;
+                lastProfilesJson = currentJson;
+                renderProfiles();
+            } catch (e) {
+                document.getElementById('networkStatus').innerHTML = "OFFLINE";
+                document.getElementById('networkStatus').style.color = "var(--danger)";
+            }
+        }
+
+        function renderProfiles() {
+            document.getElementById('profilesView').innerHTML = profiles.map(p => {
+                const isWarming = warmingProfiles.has(p.name);
+                const isHeated = heatedProfiles.has(p.name);
+                let timeRemaining = "";
+                if (p.purgeDate) {
+                    const diff = p.purgeDate - Date.now();
+                    if (diff > 0) {
+                        const h = Math.floor(diff / 3600000);
+                        const m = Math.floor((diff % 3600000) / 60000);
+                        timeRemaining = `<div style="font-size: 0.6rem; color: var(--danger);">SHRED IN: ${h}h ${m}m</div>`;
+                    }
+                }
+                
+                return `
+                <div class="card ${p.running ? 'active' : ''} ${isWarming ? 'warming' : ''}">
+                    <div class="card-header">
+                        <div>
+                            <div class="card-subtitle">${p.platform} PLATFORM</div>
+                            <div class="card-title">${p.name}</div>
+                            ${timeRemaining}
+                        </div>
+                        <div class="status-indicator" style="width: 12px; height: 12px; border-radius: 50%; background: ${p.running ? 'var(--success)' : '#222'}; box-shadow: ${p.running ? '0 0 10px var(--success)' : 'none'}"></div>
+                    </div>
+                    
+                    <div style="margin: 1rem 0; font-family: 'JetBrains Mono'; font-size: 0.7rem; color: var(--text-dim);">
+                        <div>GPU: <span style="color: var(--accent);">${p.renderer || 'N/A'}</span></div>
+                        <div>MEM: <span style="color: var(--accent);">${p.deviceMemory || 8}GB</span></div>
+                    </div>
+
+                    <div class="badge-group">
+                        ${p.hasGraft ? '<span class="badge" style="color:var(--accent); border-color:var(--accent);">DNA GRAFTED</span>' : ''}
+                        ${isHeated ? '<span class="badge heated">HEATED</span>' : '<span class="badge">CLEAN</span>'}
+                        ${p.relay ? '<span class="badge">RELAY ACTIVE</span>' : ''}
+                        <span class="badge" style="border-color: var(--primary); color: var(--primary);">V11 STEALTH</span>
+                        <span id="score-${p.name}" class="badge" style="display:none;">-</span>
+                    </div>
+                    <div id="shattered-${p.name}" style="font-family: 'JetBrains Mono'; font-size: 0.6rem; color: var(--success); margin-top: 0.8rem; display: none;">🛡️ SHATTERED: 0</div>
+                    <div class="action-row">
+                        <button class="btn btn-primary" style="flex:1;" onclick="launchProfile('${p.name}')">${isWarming ? 'WARMING...' : (p.running ? 'CLOSE' : 'IGNITE')}</button>
+                        <div style="display: flex; gap: 0.4rem;">
+                            <button class="btn btn-icon" onclick="openMirror('${p.name}')" title="Matrix Mirror">👁️</button>
+                            <button class="btn btn-icon ${isWarming ? 'warming' : ''}" onclick="warmProfile('${p.name}')" title="Ghost Farmer">${isWarming ? '⏳' : '🔥'}</button>
+                            <button class="btn btn-icon" onclick="probeIdentity('${p.name}')" title="Sovereign Probe">🛡️</button>
+                            <button class="btn btn-icon" style="color: var(--danger);" onclick="shredProfile('${p.name}')" title="Shred Identity">🗑️</button>
+                        </div>
+                    </div>
+                    ${isWarming ? '<div class="farmer-progress" id="progress-' + p.name + '" style="width: 25%;"></div>' : ''}
+                </div>`;
+            }).join('');
+        }
+
+        let shredTarget = null;
+        function shredProfile(name) {
+            isModalOpen = true;
+            shredTarget = name;
+            const modal = document.getElementById('confirmModal');
+            document.getElementById('confirmTitle').innerText = `SHRED ${name.toUpperCase()}?`;
+            modal.style.display = 'flex';
+        }
+
+        async function executeShred() {
+            if (!shredTarget) return;
+            const btn = document.getElementById('confirmActionBtn');
+            const originalText = btn.innerText;
+            btn.innerText = "SHREDDING...";
+            btn.disabled = true;
+
+            try {
+                await fetch(`/api/delete/${encodeURIComponent(shredTarget)}`, { method: 'POST' });
+                closeConfirm();
+                fetchProfiles();
+            } catch (e) {
+                alert("PROTOCOL ERROR: Shredding failed.");
+            } finally {
+                btn.innerText = originalText;
+                btn.disabled = false;
+                shredTarget = null;
+            }
+        }
+        function closeConfirm() { isModalOpen = false; shredTarget = null; document.getElementById('confirmModal').style.display = 'none'; }
+
+        async function launchProfile(name) { await fetch(`/api/launch/${encodeURIComponent(name)}`, { method: 'POST' }); fetchProfiles(); }
+        async function openModal() { isModalOpen = true; document.getElementById('createModal').style.display = 'flex'; }
+        function closeModal() { isModalOpen = false; document.getElementById('createModal').style.display = 'none'; }
+        
+        async function submitProfile() {
+            const name = document.getElementById('pName').value;
+            const platform = document.getElementById('pPlatform').value;
+            const level = parseInt(document.getElementById('pLevel').value);
+            const relay = document.getElementById('pRelay').value;
+            const selfDestructHours = parseInt(document.getElementById('pPurge').value);
+            await fetch('/api/create', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ name, platform, level, relay, selfDestructHours }) });
+            closeModal(); fetchProfiles();
+        }
+
+        async function fetchProxies() {
+            const res = await fetch('/api/proxies'); proxies = await res.json();
+            document.getElementById('proxyList').value = Array.isArray(proxies) ? proxies.join('\n') : '';
+        }
+
+        async function saveProxies() {
+            const list = document.getElementById('proxyList').value.split('\n').filter(p => p.trim());
+            await fetch('/api/proxies', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ list }) });
+            alert("Sovereign Pool Synced.");
+        }
+
+        let currentMirrorTarget = null;
+        async function openMirror(name) {
+            isModalOpen = true;
+            currentMirrorTarget = name;
+            document.getElementById('mirrorModal').style.display = 'flex';
+            document.getElementById('mirrorTitle').innerText = name.toUpperCase() + ' // OVERWATCH';
+            
+            // Generate Grid Controls
+            const active = profiles.filter(p => p.running).map(p => p.name);
+            const controls = document.getElementById('mirrorGridControls');
+            controls.innerHTML = active.map(aname => `
+                <button class="btn btn-icon ${aname === name ? 'active' : ''}" 
+                        style="width: 32px; height: 32px; font-size: 0.6rem; border-color: ${aname === name ? 'var(--primary)' : 'var(--card-border)'}"
+                        onclick="switchMirror('${aname}')">${aname.substring(0,2).toUpperCase()}</button>
+            `).join('') + (active.length > 1 ? `<button class="btn btn-icon" title="Grid View" onclick="toggleMirrorGrid()">⬜</button>` : '');
+
+            document.getElementById('interceptionLog').innerHTML = `<div style="color: var(--success); margin-bottom: 0.5rem;">[SYSTEM] Secure link established for ${name}.</div>`;
+            
+            const refresh = async () => {
+                if (document.getElementById('mirrorModal').style.display === 'none' || currentMirrorTarget !== name) return;
+                const start = Date.now();
+                try {
+                    const res = await fetch(`/api/screenshot/${encodeURIComponent(name)}`);
+                    const data = await res.json();
+                    if (data.success) {
+                        document.getElementById('mirrorFeed').src = `data:image/jpeg;base64,${data.base64}`;
+                        document.getElementById('telemetryLat').innerText = (Date.now() - start) + 'ms';
+                    }
+                } catch (e) {}
+                setTimeout(refresh, 800);
+            };
+            refresh();
+        }
+
+        function switchMirror(name) {
+            const grid = document.getElementById('mirrorGrid');
+            grid.style.gridTemplateColumns = '1fr'; // Reset to single view
+            openMirror(name);
+        }
+
+        function toggleMirrorGrid() {
+            const active = profiles.filter(p => p.running);
+            const grid = document.getElementById('mirrorGrid');
+            grid.innerHTML = active.map(p => `
+                <div style="position:relative; width:100%; height:100%; border:1px solid var(--card-border); overflow:hidden; background:#000;">
+                    <img id="gridFeed_${p.name}" style="width:100%; height:100%; object-fit:contain;">
+                    <div style="position:absolute; bottom:5px; left:5px; font-size:0.5rem; background:rgba(0,0,0,0.8); padding:2px 5px; color:var(--primary)">${p.name.toUpperCase()}</div>
+                </div>
+            `).join('');
+            grid.style.gridTemplateColumns = active.length > 4 ? '1fr 1fr 1fr' : '1fr 1fr';
+            currentMirrorTarget = "_GRID_";
+
+            const refreshGrid = async () => {
+                if (currentMirrorTarget !== "_GRID_" || document.getElementById('mirrorModal').style.display === 'none') return;
+                for (const p of active) {
+                    try {
+                        const res = await fetch(`/api/screenshot/${encodeURIComponent(p.name)}`);
+                        const data = await res.json();
+                        const img = document.getElementById(`gridFeed_${p.name}`);
+                        if (img && data.success) img.src = `data:image/jpeg;base64,${data.base64}`;
+                    } catch (e) {}
+                }
+                setTimeout(refreshGrid, 1500);
+            };
+            refreshGrid();
+        }
+
+        function closeMirror() { 
+            isModalOpen = false; 
+            currentMirrorTarget = null;
+            document.getElementById('mirrorModal').style.display = 'none'; 
+            // Restore single feed layout template
+            const grid = document.getElementById('mirrorGrid');
+            grid.style.gridTemplateColumns = '1fr';
+            grid.innerHTML = `
+                <div style="position: absolute; top:0; left:0; width: 100%; height: 100%; box-shadow: inset 0 0 100px #000; pointer-events: none; z-index: 5;"></div>
+                <div class="scanlines" style="position: absolute; top:0; left:0; width: 100%; height: 100%; background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06)); background-size: 100% 4px, 3px 100%; pointer-events: none; z-index: 6;"></div>
+                <img id="mirrorFeed" style="max-width: 100%; max-height: 100%; object-fit: contain; filter: brightness(1.1) contrast(1.1); margin: auto;">
+            `;
+        }
+        async function warmProfile(name) { 
+            if (warmingProfiles.has(name)) return;
+            warmingProfiles.add(name); 
+            fetchProfiles(); 
+            
+            // Progress Animation Loop
+            let progress = 10;
+            const timer = setInterval(() => {
+                const el = document.getElementById(`progress-${name}`);
+                if (el) {
+                    progress += (Math.random() * 2);
+                    if (progress > 98) progress = 98;
+                    el.style.width = progress + '%';
+                } else {
+                    clearInterval(timer);
+                }
+            }, 1000);
+
+            try {
+                await fetch(`/api/farm/${encodeURIComponent(name)}`, { method: 'POST' }); 
+            } finally {
+                clearInterval(timer);
+                warmingProfiles.delete(name); 
+                heatedProfiles.add(name); 
+                fetchProfiles(); 
+            }
+        }
+        async function fetchIntegrity(name) {
+            try {
+                const res = await fetch(`/api/integrity/${encodeURIComponent(name)}`);
+                if (!res.ok) return;
+                const data = await res.json();
+                const scoreEl = document.getElementById(`score-${name}`);
+                const shatteredEl = document.getElementById(`shattered-${name}`);
+                if (scoreEl) {
+                    scoreEl.innerText = `${data.score}%`;
+                    scoreEl.className = `badge ${data.status.toLowerCase()}`;
+                    scoreEl.style.display = 'inline-block';
+                }
+                if (shatteredEl) {
+                    shatteredEl.innerText = `🛡️ SHATTERED: ${data.shattered}`;
+                    shatteredEl.style.display = 'block';
+                }
+            } catch (e) {}
+        }
+
+        async function probeIdentity(name) {
+            isModalOpen = true;
+            const modal = document.getElementById('ispModal');
+            document.getElementById('ispVal').innerText = "PROBING...";
+            document.getElementById('ispType').innerText = "-";
+            document.getElementById('gpuVal').innerText = "-";
+            document.getElementById('noiseVal').innerText = "-";
+            document.getElementById('dnaSyncVal').innerText = "-";
+            modal.style.display = 'flex';
+            
+            const res = await fetch(`/api/probe/${encodeURIComponent(name)}`);
+            const data = await res.json();
+            
+            document.getElementById('ispVal').innerText = data.isp || 'UNKNOWN';
+            document.getElementById('ispType').innerText = data.type || 'UNKNOWN';
+            document.getElementById('gpuVal').innerText = data.renderer ? (data.renderer.length > 30 ? data.renderer.substring(0, 30) + '...' : data.renderer) : 'FAILED';
+            document.getElementById('noiseVal').innerText = data.noiseActive ? '🟢 ACTIVE' : '🛑 FAILED';
+            document.getElementById('dnaSyncVal').innerText = data.consistent ? '🟢 LOCKED' : '🛑 MISMATCH';
+        }
+        function closeIsp() { isModalOpen = false; document.getElementById('ispModal').style.display = 'none'; }
+        async function harvestDNA() { document.getElementById('dnaStatus').innerText = "🧬 HARVESTING..."; const res = await fetch('/api/harvest-dna', { method: 'POST' }); const data = await res.json(); document.getElementById('dnaStatus').innerText = data.success ? `✅ GRAFTED: ${data.dna.renderer}` : "❌ FAILED"; }
+        async function oneTapUnlock() { const url = document.getElementById('bypassUrl').value; if (!url) return; await fetch('/api/launch/temp_bypass', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ url }) }); }
+        async function terminateAll() {
+            if (!confirm("🚨 TERMINATE ALL ACTIVE SESSIONS? This will kill every Ghost identity instantly.")) return;
+            await fetch('/api/terminate-all', { method: 'POST' });
+            fetchProfiles();
+        }
+
+        fetchProfiles();
+        setInterval(fetchProfiles, 15000);
+        setInterval(() => {
+            profiles.filter(p => p.running).forEach(p => fetchIntegrity(p.name));
+        }, 3000);
+    </script>
+</body>
+</html>
