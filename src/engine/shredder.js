@@ -20,18 +20,25 @@ function generateRandomPattern(len) {
 
 function shred() {
     console.log("🧬 [SHREDDER] Initiating Global Binary Shatter...");
-    const root = path.join(process.env.HOME, 'Library/Caches/ms-playwright');
-    if (!fs.existsSync(root)) {
-        console.warn("🛑 [SHREDDER] Playwright cache not found in standard location.");
-        return;
-    }
+    // Search in standard OS locations for Playwright's browser cache
+    const roots = [
+        path.join(process.env.HOME || '/root', 'Library/Caches/ms-playwright'), // MacOS
+        path.join(process.env.HOME || '/root', '.cache/ms-playwright'),         // Linux
+        '/ms-playwright'                                                        // Docker / MS Image
+    ];
     
-    // Find all 'Chromium' executable binaries.
-    let bins;
-    try {
-        bins = execSync(`find "${root}" -name "Chromium" -type f`).toString().split('\n');
-    } catch (e) {
-        console.error("🛑 [SHREDDER] Failed to search for binaries:", e.message);
+    let bins = [];
+    roots.forEach(root => {
+        if (!fs.existsSync(root)) return;
+        try {
+            // Find all 'browser' executables (chrome, Chromium, msedge)
+            const found = execSync(`find "${root}" -type f \\( -name "Chromium" -o -name "chrome" -o -name "msedge" \\)`).toString().split('\n');
+            bins = bins.concat(found);
+        } catch (e) {}
+    });
+    
+    if (bins.length === 0) {
+        console.warn("🛑 [SHREDDER] Playwright cache not found. Ensure browsers are installed with 'npx playwright install'.");
         return;
     }
 
